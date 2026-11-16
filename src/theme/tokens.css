@@ -1,0 +1,82 @@
+/*
+ * Design tokens. Everything in @theme is emitted as a CSS variable on :root
+ * and becomes a Tailwind utility (e.g. --color-mint -> bg-mint, text-mint).
+ */
+@theme {
+  /* Color */
+  --color-page: #e9eae9;
+  --color-background: #f5f6f5;
+  --color-surface: #ffffff;
+  --color-label: #1d1d1f;
+  --color-label-secondary: #6e6e73;
+  --color-label-tertiary: #a1a1a6;
+  --color-mint: #2ec4a0;
+  --color-mint-soft: #e4f7f1;
+  --color-mint-deep: #0e7a62;
+  --color-hairline: rgb(0 0 0 / 0.06);
+  --color-outline: rgb(0 0 0 / 0.12);
+
+  /* Typography */
+  --font-sans: -apple-system, 'SF Pro Display', 'SF Pro Text', Inter, system-ui, sans-serif;
+
+  --text-large-title: 34px;
+  --text-large-title--line-height: 41px;
+  --text-large-title--font-weight: 700;
+  --text-large-title--letter-spacing: 0.01em;
+
+  --text-title: 22px;
+  --text-title--line-height: 28px;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.012em;
+
+  --text-body: 17px;
+  --text-body--line-height: 22px;
+  --text-body--font-weight: 400;
+  --text-body--letter-spacing: -0.024em;
+
+  --text-callout: 15px;
+  --text-callout--line-height: 20px;
+  --text-callout--font-weight: 400;
+  --text-callout--letter-spacing: -0.016em;
+
+  --text-caption: 13px;
+  --text-caption--line-height: 18px;
+  --text-caption--font-weight: 400;
+  --text-caption--letter-spacing: -0.006em;
+
+  /* Radii */
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-device: 48px;
+
+  /* Shadows */
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 12px rgb(0 0 0 / 0.05), 0 16px 40px rgb(0 0 0 / 0.08);
+  --shadow-device: 0 2px 6px rgb(0 0 0 / 0.04), 0 24px 48px rgb(0 0 0 / 0.08), 0 60px 120px rgb(0 0 0 / 0.1);
+  --shadow-edge: -8px 0 24px rgb(0 0 0 / 0.06);
+
+  /* Layout */
+  --breakpoint-framed: 500px;
+}
+
+/* Safe-area insets: real ones on phones, simulated status bar / home indicator inside the desktop frame. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (width >= 500px) {
+  :root {
+    --safe-top: 44px;
+    --safe-bottom: 28px;
+  }
+}
+
+/* Frosted-glass surface. */
+@utility glass {
+  background-color: rgb(255 255 255 / 0.7);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 0.5px solid var(--color-hairline);
+}

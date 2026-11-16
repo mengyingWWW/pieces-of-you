@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+@import './theme/tokens.css';
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-page);
+    color: var(--color-label);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  @media (width < 500px) {
+    body {
+      background-color: var(--color-background);
+    }
+  }
+
+  button {
+    cursor: pointer;
+  }
+}
