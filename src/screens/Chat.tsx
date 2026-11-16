@@ -1,10 +1,19 @@
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { CardHand } from '../components/chat/CardHand'
+import { ChatInput } from '../components/chat/ChatInput'
+import { MessageList } from '../components/chat/MessageList'
 import { Presence } from '../components/Presence'
 import { TopBar } from '../components/TopBar'
+import { story } from '../data/story'
 import { useNavigation } from '../navigation/navigation'
+import { useGame } from '../state/GameContext'
 
 export function Chat() {
   const { push, pop } = useNavigation()
+  const { messages, typing, startIntro, sendText } = useGame()
+
+  useEffect(startIntro, [startIntro])
 
   return (
     <div className="relative flex h-full flex-col">
@@ -16,24 +25,21 @@ export function Chat() {
           className="flex items-center gap-2 rounded-full px-2 py-1"
         >
           <Presence size={26} />
-          <span className="text-body font-semibold text-label">Companion</span>
+          <span className="text-body font-semibold text-label">{story.companionName}</span>
         </motion.button>
       </TopBar>
 
-      <main className="flex flex-1 flex-col overflow-y-auto px-4 pt-[calc(var(--safe-top)+44px+16px)] pb-4">
-        <p className="m-auto text-caption text-label-tertiary">No messages yet</p>
-      </main>
+      <MessageList
+        messages={messages}
+        typing={typing}
+        className="flex-1 px-4 pt-[calc(var(--safe-top)+44px+16px)] pb-4"
+      />
 
       <footer className="shrink-0 px-4 pb-[calc(var(--safe-bottom)+8px)]">
-        <div className="flex h-[140px] items-center justify-center rounded-lg border border-dashed border-outline">
-          <span className="text-caption text-label-tertiary">Card hand</span>
+        <CardHand />
+        <div className="mt-3">
+          <ChatInput onSend={sendText} />
         </div>
-        <input
-          type="text"
-          placeholder="Or type something…"
-          aria-label="Message"
-          className="mt-3 h-9 w-full rounded-full border-[0.5px] border-hairline bg-surface/60 px-4 text-callout text-label outline-none placeholder:text-label-tertiary focus:bg-surface"
-        />
       </footer>
     </div>
   )
