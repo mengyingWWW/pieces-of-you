@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react'
-import { gameReducer, initialGameState, isBusy, type GameState } from './gameReducer'
+import {
+  gameReducer,
+  initialGameState,
+  isBusy,
+  isStoryComplete,
+  isWaitingForPlayer,
+  type GameState,
+} from './gameReducer'
 
 const PAUSE_BEFORE_TYPING_MS = 400
 
@@ -9,9 +16,15 @@ function typingDuration(text: string) {
 
 type Game = GameState & {
   busy: boolean
+  waitingForPlayer: boolean
+  storyComplete: boolean
   startIntro: () => void
+  drawCard: () => void
+  keepCard: () => void
   playCard: (cardId: string) => void
   sendText: (text: string) => void
+  markBadgesSeen: () => void
+  reset: () => void
 }
 
 const GameContext = createContext<Game | null>(null)
@@ -26,19 +39,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ? setTimeout(() => dispatch({ type: 'deliver' }), typingDuration(head.text))
       : setTimeout(() => dispatch({ type: 'startTyping' }), PAUSE_BEFORE_TYPING_MS)
     return () => clearTimeout(timer)
-    // Keyed on the head line's id so appending to the queue doesn't restart the current line.
   }, [head?.id, state.typing])
 
   const actions = useMemo(
     () => ({
       startIntro: () => dispatch({ type: 'startIntro' }),
+      drawCard: () => dispatch({ type: 'drawCard' }),
+      keepCard: () => dispatch({ type: 'keepCard' }),
       playCard: (cardId: string) => dispatch({ type: 'playCard', cardId }),
       sendText: (text: string) => dispatch({ type: 'sendText', text }),
+      markBadgesSeen: () => dispatch({ type: 'markBadgesSeen' }),
+      reset: () => dispatch({ type: 'reset' }),
     }),
     [],
   )
 
-  const game = useMemo<Game>(() => ({ ...state, busy: isBusy(state), ...actions }), [state, actions])
+  const game = useMemo<Game>(
+    () => ({
+      ...state,
+      busy: isBusy(state),
+      waitingForPlayer: isWaitingForPlayer(state),
+      storyComplete: isStoryComplete(state),
+      ...actions,
+    }),
+    [state, actions],
+  )
 
   return <GameContext.Provider value={game}>{children}</GameContext.Provider>
 }

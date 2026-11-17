@@ -7,6 +7,8 @@ export type Direction = 'push' | 'pop'
 export type Navigation = {
   push: (screen: ScreenName) => void
   pop: () => void
+  /** Clear the stack and show a single screen (used by Start over). */
+  resetTo: (screen: ScreenName) => void
 }
 
 export const NavigationContext = createContext<Navigation | null>(null)

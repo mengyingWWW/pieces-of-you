@@ -30,10 +30,15 @@ export function Navigator({ initial, screens }: NavigatorProps) {
     setStack((s) => (s.length > 1 ? s.slice(0, -1) : s))
   }, [])
 
-  const nav = useMemo(() => ({ push, pop }), [push, pop])
+  const resetTo = useCallback((screen: ScreenName) => {
+    setDirection('pop')
+    setStack([screen])
+  }, [])
+
+  const nav = useMemo(() => ({ push, pop, resetTo }), [push, pop, resetTo])
 
   const depth = stack.length
-  const current = stack[depth - 1]
+  const current = stack[depth - 1]!
   const Screen = screens[current]
 
   return (

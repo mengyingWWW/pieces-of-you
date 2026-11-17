@@ -1,14 +1,20 @@
+import { motion } from 'framer-motion'
 import type { Card } from '../../data/story'
-import { CardIcon } from './CardIcon'
+import { spring } from '../../theme/motion'
+import { MomentCard } from './MomentCard'
+
+const W = 160
+const H = 213
 
 export function PlayedCard({ card }: { card: Card }) {
   return (
-    <div className="flex w-[230px] items-center gap-3 rounded-md bg-surface p-3 shadow-raised">
-      <CardIcon icon={card.icon} size={44} />
-      <div className="min-w-0">
-        <p className="text-callout font-semibold text-label">{card.title}</p>
-        <p className="text-caption text-label-secondary">{card.subtitle}</p>
-      </div>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 28, scale: 0.86, rotate: -8 }}
+      animate={{ opacity: 1, y: 0, scale: 1, rotate: -3 }}
+      transition={{ ...spring, stiffness: 320, damping: 18 }}
+      style={{ originX: 1, originY: 1 }}
+    >
+      <MomentCard card={card} width={W} height={H} />
+    </motion.div>
   )
 }

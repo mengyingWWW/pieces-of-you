@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { story } from '../../data/story'
+import { getCard } from '../../data/story'
 import type { Message } from '../../state/gameReducer'
 import { spring } from '../../theme/motion'
 import { PlayedCard } from './PlayedCard'
@@ -14,8 +14,6 @@ type MessageListProps = {
 }
 
 type Item = Message | { id: 'typing'; sender: 'companion'; kind: 'typing' }
-
-const cardsById = new Map(story.cards.map((c) => [c.id, c]))
 
 export function MessageList({ messages, typing, className = '' }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -56,7 +54,7 @@ export function MessageList({ messages, typing, className = '' }: MessageListPro
                 {item.kind === 'typing' ? (
                   <TypingIndicator />
                 ) : item.kind === 'card' ? (
-                  <PlayedCard card={cardsById.get(item.cardId)!} />
+                  <PlayedCard card={getCard(item.cardId)} />
                 ) : (
                   <TextBubble
                     text={item.text}
