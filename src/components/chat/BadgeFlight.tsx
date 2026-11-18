@@ -4,6 +4,7 @@ import { getCard } from '../../data/story'
 import { spring } from '../../theme/motion'
 
 const BADGE = 56
+const FRAME_W = 390
 
 type BadgeFlightProps = {
   cardId: string
@@ -14,6 +15,16 @@ type BadgeFlightProps = {
 
 type Point = { x: number; y: number }
 
+/** Convert a viewport rect into unscaled coordinates inside the device frame. */
+function toFrameLocal(rect: DOMRect, frameRect: DOMRect, scale: number) {
+  return {
+    left: (rect.left - frameRect.left) / scale,
+    top: (rect.top - frameRect.top) / scale,
+    width: rect.width / scale,
+    height: rect.height / scale,
+  }
+}
+
 export function BadgeFlight({ cardId, slotIndex, onComplete }: BadgeFlightProps) {
   const card = getCard(cardId)
   const [from, setFrom] = useState<Point | null>(null)
@@ -22,21 +33,24 @@ export function BadgeFlight({ cardId, slotIndex, onComplete }: BadgeFlightProps)
   useEffect(() => {
     const cardEl = document.querySelector(`[data-played-card="${cardId}"]`)
     const slotEl = document.querySelector(`[data-progress-slot="${slotIndex}"]`)
-    if (!cardEl || !slotEl) {
+    const frameEl = document.querySelector('[data-device-frame]') ?? document.querySelector('#root')
+    if (!cardEl || !slotEl || !frameEl) {
       onComplete()
       return
     }
 
-    const cardRect = cardEl.getBoundingClientRect()
-    const slotRect = slotEl.getBoundingClientRect()
+    const frameRect = frameEl.getBoundingClientRect()
+    const scale = frameRect.width / FRAME_W || 1
+    const cardLocal = toFrameLocal(cardEl.getBoundingClientRect(), frameRect, scale)
+    const slotLocal = toFrameLocal(slotEl.getBoundingClientRect(), frameRect, scale)
 
     setFrom({
-      x: cardRect.left + cardRect.width / 2 - BADGE / 2,
-      y: cardRect.top + cardRect.height * 0.35 - BADGE / 2,
+      x: cardLocal.left + cardLocal.width / 2 - BADGE / 2,
+      y: cardLocal.top + cardLocal.height * 0.35 - BADGE / 2,
     })
     setTo({
-      x: slotRect.left + slotRect.width / 2 - BADGE / 2,
-      y: slotRect.top + slotRect.height / 2 - BADGE / 2,
+      x: slotLocal.left + slotLocal.width / 2 - BADGE / 2,
+      y: slotLocal.top + slotLocal.height / 2 - BADGE / 2,
     })
   }, [cardId, slotIndex, onComplete])
 
@@ -48,7 +62,7 @@ export function BadgeFlight({ cardId, slotIndex, onComplete }: BadgeFlightProps)
   return (
     <motion.div
       aria-hidden
-      className="pointer-events-none fixed z-50 overflow-hidden rounded-full"
+      className="pointer-events-none absolute z-50 overflow-hidden rounded-full"
       style={{
         width: BADGE,
         height: BADGE,
