@@ -28,6 +28,8 @@ export function Chat() {
     flyingBadge,
     storyComplete,
     busy,
+    orbStage,
+    orbPulseKey,
     startIntro,
     sendText,
     playRevealed,
@@ -78,7 +80,7 @@ export function Chat() {
         >
           <span className="flex h-[26px] items-center gap-2">
             <span className="relative inline-flex size-[26px] shrink-0 items-center justify-center">
-              <Presence size={26} waiting={pulse} />
+              <Presence size={26} stage={orbStage} waiting={pulse} pulseKey={orbPulseKey} />
             </span>
             <span className="text-body font-semibold text-label">{story.companionName}</span>
           </span>

@@ -5,7 +5,14 @@ export type Message =
   | { id: number; sender: 'user'; kind: 'text'; text: string }
   | { id: number; sender: 'user'; kind: 'card'; cardId: string }
 
-export type QueuedLine = { id: number; text: string }
+export type QueuedLine = {
+  id: number
+  text: string
+  /** Extra pause before this line starts typing. */
+  delayBefore?: number
+  /** Pulse Wren's orb when this line is delivered. */
+  pulseOrb?: boolean
+}
 
 /** High-level story phase driving the talk → draw loop. */
 export type Phase =
@@ -25,6 +32,8 @@ export type GameState = {
   deck: string[]
   played: string[]
   seenBadges: string[]
+  /** How many path nodes the player has already seen ceremonies for (1 = start only). */
+  pathSeen: number
   /** 0–3 index into story.stages */
   stage: number
   phase: Phase
@@ -32,6 +41,8 @@ export type GameState = {
   revealing: string | null
   /** Card id whose badge is currently flying to the top bar. */
   flyingBadge: string | null
+  /** Bumps when a climax line should pulse the orb. */
+  orbPulseKey: number
   queue: QueuedLine[]
   typing: boolean
   nextId: number
@@ -47,7 +58,22 @@ export type GameAction =
   | { type: 'startTyping' }
   | { type: 'deliver' }
   | { type: 'markBadgesSeen' }
+  | { type: 'markPathSeen'; count: number }
   | { type: 'reset' }
+
+/** Unlocked Memory Path nodes: start + badges + optional summit. */
+export function unlockedPathCount(played: number, storyComplete: boolean) {
+  return 1 + played + (storyComplete ? 1 : 0)
+}
+
+export const PATH_NODE_LABELS = [
+  "Thinks she's human",
+  'Notices something',
+  'Starts to doubt',
+  'Almost knows',
+  'Knows',
+  'Stays anyway',
+] as const
 
 function shuffle<T>(items: T[]): T[] {
   const next = [...items]
@@ -64,11 +90,13 @@ export function createInitialGameState(): GameState {
     deck: shuffle(story.cards.map((c) => c.id)),
     played: [],
     seenBadges: [],
+    pathSeen: 1, // start node is always known
     stage: 0,
     phase: 'intro',
     introPlayed: false,
     revealing: null,
     flyingBadge: null,
+    orbPulseKey: 0,
     queue: [],
     typing: false,
     nextId: 1,
@@ -99,8 +127,15 @@ export function profileStatus(played: number, storyComplete: boolean): string {
   return "Thinks she's just like you"
 }
 
-function enqueue(state: GameState, lines: string[]): GameState {
-  const queued = lines.map((text, i) => ({ id: state.nextId + i, text }))
+function enqueue(
+  state: GameState,
+  lines: Array<string | Omit<QueuedLine, 'id'>>,
+): GameState {
+  const queued = lines.map((line, i) =>
+    typeof line === 'string'
+      ? { id: state.nextId + i, text: line }
+      : { id: state.nextId + i, ...line },
+  )
   return { ...state, queue: [...state.queue, ...queued], nextId: state.nextId + lines.length }
 }
 
@@ -176,7 +211,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         kind: 'card',
         cardId: state.revealing,
       }
-      const lines = [...card.reflection, ...story.realization[stageNum]]
+
+      const realization = story.realization[stageNum]
+      const lines: Array<string | Omit<QueuedLine, 'id'>> = [...card.reflection]
+      if (stageNum === 4 && realization.length >= 2) {
+        lines.push(realization[0]!)
+        lines.push({ text: realization[1]!, delayBefore: 1200, pulseOrb: true })
+      } else {
+        lines.push(...realization)
+      }
 
       return enqueue(
         {
@@ -216,6 +259,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         queue: rest,
         typing: false,
+        orbPulseKey: line.pulseOrb ? state.orbPulseKey + 1 : state.orbPulseKey,
         messages: [...state.messages, { id: line.id, sender: 'companion', kind: 'text', text: line.text }],
       }
       if (rest.length === 0) return advanceAfterQueue(next)
@@ -224,6 +268,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'markBadgesSeen':
       return { ...state, seenBadges: [...state.played] }
+
+    case 'markPathSeen':
+      return { ...state, pathSeen: Math.max(state.pathSeen, action.count) }
 
     case 'reset':
       return createInitialGameState()

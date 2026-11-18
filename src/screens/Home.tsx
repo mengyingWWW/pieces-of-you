@@ -1,9 +1,11 @@
 import { Button } from '../components/Button'
 import { Presence } from '../components/Presence'
 import { useNavigation } from '../navigation/navigation'
+import { useGame } from '../state/GameContext'
 
 export function Home() {
   const { push } = useNavigation()
+  const { orbStage } = useGame()
 
   return (
     <div className="flex h-full flex-col px-6 pt-[calc(var(--safe-top)+16px)] pb-[calc(var(--safe-bottom)+16px)]">
@@ -15,7 +17,7 @@ export function Home() {
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center gap-5">
-        <Presence size={180} />
+        <Presence size={180} stage={orbStage} />
         <div className="max-w-[280px] text-center">
           <p className="text-callout text-label-secondary">Wren is waiting to get to know you.</p>
           <p className="mt-2 text-caption text-label-secondary">

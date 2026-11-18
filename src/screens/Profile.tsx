@@ -1,35 +1,36 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BadgeSheet } from '../components/profile/BadgeSheet'
-import { MemoryBadge } from '../components/profile/MemoryBadge'
+import { MemoryPath } from '../components/profile/MemoryPath'
 import { Presence } from '../components/Presence'
 import { TopBar } from '../components/TopBar'
 import { getCard, story } from '../data/story'
 import { useNavigation } from '../navigation/navigation'
 import { useGame } from '../state/GameContext'
-import { profileStatus } from '../state/gameReducer'
+import { profileStatus, unlockedPathCount } from '../state/gameReducer'
 
 export function Profile() {
   const { pop, resetTo } = useNavigation()
-  const { played, seenBadges, storyComplete, markBadgesSeen, reset } = useGame()
+  const { played, storyComplete, pathSeen, orbStage, markPathSeen, reset } = useGame()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [shimmerIds, setShimmerIds] = useState<string[]>([])
-  const openedRef = useRef(false)
+  const [displayUnlock, setDisplayUnlock] = useState(() =>
+    Math.max(0, Math.min(pathSeen, unlockedPathCount(played.length, storyComplete)) - 1),
+  )
 
-  useEffect(() => {
-    if (openedRef.current) return
-    openedRef.current = true
-    const fresh = played.filter((id) => !seenBadges.includes(id))
-    setShimmerIds(fresh)
-    const timer = window.setTimeout(() => {
-      markBadgesSeen()
-      setShimmerIds([])
-    }, 1400)
-    return () => clearTimeout(timer)
-  }, [played, seenBadges, markBadgesSeen])
-
-  const status = profileStatus(played.length, storyComplete)
   const selected = selectedId ? getCard(selectedId) : null
+  const status = profileStatus(Math.min(displayUnlock, played.length), storyComplete && displayUnlock >= 5)
+
+  const handleMarkSeen = useCallback(
+    (count: number) => {
+      markPathSeen(count)
+    },
+    [markPathSeen],
+  )
+
+  const handleCeremonyProgress = useCallback((revealedNodes: number) => {
+    // revealedNodes is 1-based count of unlocked nodes; badges = nodes 1..4 → played count
+    setDisplayUnlock(Math.max(0, revealedNodes - 1))
+  }, [])
 
   function handleStartOver() {
     reset()
@@ -37,49 +38,47 @@ export function Profile() {
   }
 
   return (
-    <div className="relative h-full overflow-hidden">
+    <div className="relative flex h-full flex-col overflow-hidden">
       <TopBar backLabel="Chat" onBack={pop} />
 
-      <main className="h-full overflow-y-auto px-5 pt-[calc(var(--safe-top)+44px+28px)] pb-[calc(var(--safe-bottom)+24px)]">
-        <section className="flex flex-col items-center text-center">
-          <Presence size={128} />
-          <h1 className="mt-5 text-title text-label">{story.companionName}</h1>
-          <p className="mt-1 max-w-[260px] text-callout text-label-secondary">{status}</p>
-          <p className="mt-2 text-caption text-label-secondary">
-            {played.length} of 4 pieces
-          </p>
-        </section>
-
-        <section className="mt-10">
-          <h2 className="px-1 pb-3 text-caption uppercase tracking-wide text-label-secondary">
-            Memory book
-          </h2>
-          <div className="grid grid-cols-2 justify-items-center gap-x-6 gap-y-8 rounded-lg bg-surface px-4 py-8 shadow-soft">
-            {story.cards.map((card) => {
-              const collected = played.includes(card.id)
-              return (
-                <MemoryBadge
-                  key={card.id}
-                  card={collected ? card : null}
-                  shimmer={shimmerIds.includes(card.id)}
-                  onClick={collected ? () => setSelectedId(card.id) : undefined}
-                />
-              )
-            })}
-          </div>
-        </section>
-
-        <div className="mt-12 flex justify-center pb-2">
-          <motion.button
-            type="button"
-            onClick={handleStartOver}
-            whileTap={{ opacity: 0.45 }}
-            className="text-caption text-label-tertiary"
+      <header className="relative z-[1] flex shrink-0 flex-col items-center px-5 pt-[calc(var(--safe-top)+44px+12px)] pb-3 text-center">
+        <Presence size={56} stage={Math.min(orbStage, Math.max(0, displayUnlock))} />
+        <h1 className="mt-2 text-title text-label">{story.companionName}</h1>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={status}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.35 }}
+            className="mt-1 max-w-[280px] text-callout text-label-secondary"
           >
-            Start over
-          </motion.button>
-        </div>
-      </main>
+            {status}
+          </motion.p>
+        </AnimatePresence>
+      </header>
+
+      <div className="relative min-h-0 flex-1">
+        <MemoryPath
+          played={played}
+          storyComplete={storyComplete}
+          pathSeen={pathSeen}
+          onMarkSeen={handleMarkSeen}
+          onCeremonyProgress={handleCeremonyProgress}
+          onOpenBadge={(id) => setSelectedId(id)}
+        />
+      </div>
+
+      <div className="relative z-[1] flex shrink-0 justify-center pb-[calc(var(--safe-bottom)+16px)] pt-2">
+        <motion.button
+          type="button"
+          onClick={handleStartOver}
+          whileTap={{ opacity: 0.45 }}
+          className="text-caption text-label-tertiary"
+        >
+          Start over
+        </motion.button>
+      </div>
 
       <AnimatePresence>
         {selected && (

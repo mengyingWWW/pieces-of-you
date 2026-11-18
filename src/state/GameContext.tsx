@@ -19,6 +19,8 @@ type Game = GameState & {
   busy: boolean
   storyComplete: boolean
   status: string | null
+  /** 0–4 orb evolution stage. */
+  orbStage: number
   startIntro: () => void
   sendText: (text: string) => void
   finishShimmer: () => void
@@ -26,6 +28,7 @@ type Game = GameState & {
   playRevealed: () => void
   finishBadge: () => void
   markBadgesSeen: () => void
+  markPathSeen: (count: number) => void
   reset: () => void
 }
 
@@ -39,11 +42,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (!head) return
     const timer = state.typing
       ? setTimeout(() => dispatch({ type: 'deliver' }), typingDuration(head.text))
-      : setTimeout(() => dispatch({ type: 'startTyping' }), PAUSE_BEFORE_TYPING_MS)
+      : setTimeout(
+          () => dispatch({ type: 'startTyping' }),
+          PAUSE_BEFORE_TYPING_MS + (head.delayBefore ?? 0),
+        )
     return () => clearTimeout(timer)
   }, [head?.id, state.typing])
 
-  // Auto-advance shimmer after the sweep plays.
   useEffect(() => {
     if (state.phase !== 'shimmer') return
     const timer = window.setTimeout(() => dispatch({ type: 'finishShimmer' }), 900)
@@ -59,21 +64,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
       playRevealed: () => dispatch({ type: 'playRevealed' }),
       finishBadge: () => dispatch({ type: 'finishBadge' }),
       markBadgesSeen: () => dispatch({ type: 'markBadgesSeen' }),
+      markPathSeen: (count: number) => dispatch({ type: 'markPathSeen', count }),
       reset: () => dispatch({ type: 'reset' }),
     }),
     [],
   )
 
-  const game = useMemo<Game>(
-    () => ({
+  const game = useMemo<Game>(() => {
+    const storyComplete = isStoryComplete(state)
+    return {
       ...state,
       busy: isBusy(state),
-      storyComplete: isStoryComplete(state),
+      storyComplete,
       status: statusLine(state),
+      orbStage: storyComplete ? 4 : Math.min(4, state.played.length),
       ...actions,
-    }),
-    [state, actions],
-  )
+    }
+  }, [state, actions])
 
   return <GameContext.Provider value={game}>{children}</GameContext.Provider>
 }
