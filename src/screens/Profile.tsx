@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BadgeSheet } from '../components/profile/BadgeSheet'
 import { MemoryPath } from '../components/profile/MemoryPath'
@@ -11,11 +11,17 @@ import { profileStatus, unlockedPathCount } from '../state/gameReducer'
 
 export function Profile() {
   const { pop, resetTo } = useNavigation()
-  const { played, storyComplete, pathSeen, orbStage, markPathSeen, reset } = useGame()
+  const { played, storyComplete, pathSeen, orbStage, markPathSeen, markBadgesSeen, reset } =
+    useGame()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [displayUnlock, setDisplayUnlock] = useState(() =>
     Math.max(0, Math.min(pathSeen, unlockedPathCount(played.length, storyComplete)) - 1),
   )
+
+  // Clear the Chat pill unread dot when Memory Path is opened.
+  useEffect(() => {
+    markBadgesSeen()
+  }, [markBadgesSeen])
 
   const selected = selectedId ? getCard(selectedId) : null
   const status = profileStatus(Math.min(displayUnlock, played.length), storyComplete && displayUnlock >= 5)

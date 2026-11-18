@@ -5,8 +5,8 @@ import { ChatInput } from '../components/chat/ChatInput'
 import { ChatShimmer } from '../components/chat/ChatShimmer'
 import { DeckPanel } from '../components/chat/DeckPanel'
 import { DrawReveal } from '../components/chat/DrawReveal'
+import { MemoryPathPill } from '../components/chat/MemoryPathPill'
 import { MessageList } from '../components/chat/MessageList'
-import { ProgressSlots } from '../components/chat/ProgressSlots'
 import { SuggestionChips } from '../components/chat/SuggestionChips'
 import { Presence } from '../components/Presence'
 import { TopBar } from '../components/TopBar'
@@ -30,6 +30,7 @@ export function Chat() {
     busy,
     orbStage,
     orbPulseKey,
+    seenBadges,
     startIntro,
     sendText,
     playRevealed,
@@ -38,6 +39,7 @@ export function Chat() {
 
   const [badgeLanded, setBadgeLanded] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  const [pillPopping, setPillPopping] = useState(false)
 
   useEffect(startIntro, [startIntro])
 
@@ -45,12 +47,15 @@ export function Chat() {
     if (phase === 'badge' && flyingBadge) {
       setBadgeLanded(false)
       setShowToast(false)
+      setPillPopping(false)
     }
   }, [phase, flyingBadge])
 
   const handleFlightComplete = useCallback(() => {
     setBadgeLanded(true)
+    setPillPopping(true)
     setShowToast(true)
+    window.setTimeout(() => setPillPopping(false), 700)
     window.setTimeout(() => {
       setShowToast(false)
       finishBadge()
@@ -59,10 +64,19 @@ export function Chat() {
 
   const showDeck = phase === 'draw' || phase === 'shimmer' || !!revealing
   const showComposer = phase === 'talk'
-  const displayPlayed = flyingBadge && !badgeLanded ? played.slice(0, -1) : played
-  const poppingIndex = badgeLanded && flyingBadge ? played.length - 1 : null
+  // Hold the count back until the badge finishes flying into the pill.
+  const awaitingLand =
+    played.length > 0 &&
+    !badgeLanded &&
+    (phase === 'respond' || phase === 'badge')
+  const displayCount = awaitingLand ? played.length - 1 : played.length
+  const unread = !awaitingLand && played.some((id) => !seenBadges.includes(id))
   const currentStage = story.stages[stage]
   const pulse = status === 'Listening…' || phase === 'draw'
+
+  function openPath() {
+    push('profile')
+  }
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
@@ -70,11 +84,18 @@ export function Chat() {
         backLabel="Home"
         onBack={pop}
         tall
-        trailing={<ProgressSlots played={displayPlayed} poppingIndex={poppingIndex} />}
+        trailing={
+          <MemoryPathPill
+            count={displayCount}
+            popping={pillPopping}
+            unread={unread}
+            onClick={openPath}
+          />
+        }
       >
         <motion.button
           type="button"
-          onClick={() => push('profile')}
+          onClick={openPath}
           whileTap={{ opacity: 0.5 }}
           className="flex h-[44px] max-w-[210px] flex-col items-center justify-center gap-0.5 rounded-full px-2"
         >
@@ -119,7 +140,7 @@ export function Chat() {
                 <p className="text-callout text-label-tertiary">All four pieces shared.</p>
                 <motion.button
                   type="button"
-                  onClick={() => push('profile')}
+                  onClick={openPath}
                   whileTap={{ opacity: 0.5 }}
                   className="rounded-full px-3 py-1 text-caption font-medium text-mint-deep"
                 >
@@ -174,12 +195,7 @@ export function Chat() {
 
       <AnimatePresence>
         {phase === 'badge' && flyingBadge && !badgeLanded && (
-          <BadgeFlight
-            key={flyingBadge}
-            cardId={flyingBadge}
-            slotIndex={played.length - 1}
-            onComplete={handleFlightComplete}
-          />
+          <BadgeFlight key={flyingBadge} cardId={flyingBadge} onComplete={handleFlightComplete} />
         )}
       </AnimatePresence>
 

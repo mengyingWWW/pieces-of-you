@@ -8,8 +8,6 @@ const FRAME_W = 390
 
 type BadgeFlightProps = {
   cardId: string
-  /** Index of the progress slot this badge will land in (0-based). */
-  slotIndex: number
   onComplete: () => void
 }
 
@@ -25,16 +23,16 @@ function toFrameLocal(rect: DOMRect, frameRect: DOMRect, scale: number) {
   }
 }
 
-export function BadgeFlight({ cardId, slotIndex, onComplete }: BadgeFlightProps) {
+export function BadgeFlight({ cardId, onComplete }: BadgeFlightProps) {
   const card = getCard(cardId)
   const [from, setFrom] = useState<Point | null>(null)
   const [to, setTo] = useState<Point | null>(null)
 
   useEffect(() => {
     const cardEl = document.querySelector(`[data-played-card="${cardId}"]`)
-    const slotEl = document.querySelector(`[data-progress-slot="${slotIndex}"]`)
+    const pillEl = document.querySelector('[data-memory-path-pill]')
     const frameEl = document.querySelector('[data-device-frame]') ?? document.querySelector('#root')
-    if (!cardEl || !slotEl || !frameEl) {
+    if (!cardEl || !pillEl || !frameEl) {
       onComplete()
       return
     }
@@ -42,17 +40,17 @@ export function BadgeFlight({ cardId, slotIndex, onComplete }: BadgeFlightProps)
     const frameRect = frameEl.getBoundingClientRect()
     const scale = frameRect.width / FRAME_W || 1
     const cardLocal = toFrameLocal(cardEl.getBoundingClientRect(), frameRect, scale)
-    const slotLocal = toFrameLocal(slotEl.getBoundingClientRect(), frameRect, scale)
+    const pillLocal = toFrameLocal(pillEl.getBoundingClientRect(), frameRect, scale)
 
     setFrom({
       x: cardLocal.left + cardLocal.width / 2 - BADGE / 2,
       y: cardLocal.top + cardLocal.height * 0.35 - BADGE / 2,
     })
     setTo({
-      x: slotLocal.left + slotLocal.width / 2 - BADGE / 2,
-      y: slotLocal.top + slotLocal.height / 2 - BADGE / 2,
+      x: pillLocal.left + pillLocal.width / 2 - BADGE / 2,
+      y: pillLocal.top + pillLocal.height / 2 - BADGE / 2,
     })
-  }, [cardId, slotIndex, onComplete])
+  }, [cardId, onComplete])
 
   if (!from || !to) return null
 
