@@ -1,4 +1,4 @@
-import { story } from '../data/story'
+import { makeEcho, story } from '../data/story'
 
 export type Message =
   | { id: number; sender: 'companion'; kind: 'text'; text: string }
@@ -7,29 +7,43 @@ export type Message =
 
 export type QueuedLine = { id: number; text: string }
 
+/** High-level story phase driving the talk → draw loop. */
+export type Phase =
+  | 'intro'
+  | 'question'
+  | 'talk'
+  | 'echo'
+  | 'shimmer'
+  | 'draw'
+  | 'respond'
+  | 'badge'
+  | 'ending'
+  | 'complete'
+
 export type GameState = {
   messages: Message[]
-  /** Undrawn card ids, shuffled once at start. */
   deck: string[]
   played: string[]
-  /** Badge ids already seen on the Profile screen (for shimmer). */
   seenBadges: string[]
+  /** 0–3 index into story.stages */
+  stage: number
+  phase: Phase
   introPlayed: boolean
-  /** Deck may be drawn from once while true. */
-  canDraw: boolean
-  /** Card currently in the reveal overlay. */
   revealing: string | null
+  /** Card id whose badge is currently flying to the top bar. */
+  flyingBadge: string | null
   queue: QueuedLine[]
   typing: boolean
-  typedReplyIndex: number
   nextId: number
 }
 
 export type GameAction =
   | { type: 'startIntro' }
+  | { type: 'sendText'; text: string }
+  | { type: 'finishShimmer' }
   | { type: 'drawCard' }
   | { type: 'playRevealed' }
-  | { type: 'sendText'; text: string }
+  | { type: 'finishBadge' }
   | { type: 'startTyping' }
   | { type: 'deliver' }
   | { type: 'markBadgesSeen' }
@@ -50,12 +64,13 @@ export function createInitialGameState(): GameState {
     deck: shuffle(story.cards.map((c) => c.id)),
     played: [],
     seenBadges: [],
+    stage: 0,
+    phase: 'intro',
     introPlayed: false,
-    canDraw: false,
     revealing: null,
+    flyingBadge: null,
     queue: [],
     typing: false,
-    typedReplyIndex: 0,
     nextId: 1,
   }
 }
@@ -66,13 +81,15 @@ export function isBusy(state: GameState) {
   return state.typing || state.queue.length > 0
 }
 
-export function isWaitingForPlayer(state: GameState) {
-  if (isBusy(state) || state.revealing || state.played.length >= 4) return false
-  return state.canDraw
+export function isStoryComplete(state: GameState) {
+  return state.phase === 'complete'
 }
 
-export function isStoryComplete(state: GameState) {
-  return state.played.length >= 4 && !isBusy(state) && !state.revealing
+export function statusLine(state: GameState): string | null {
+  if (state.typing || state.queue.length > 0) return null
+  if (state.phase === 'talk') return 'Listening…'
+  if (state.phase === 'draw' || state.revealing) return 'A memory is surfacing…'
+  return null
 }
 
 export function profileStatus(played: number, storyComplete: boolean): string {
@@ -87,67 +104,105 @@ function enqueue(state: GameState, lines: string[]): GameState {
   return { ...state, queue: [...state.queue, ...queued], nextId: state.nextId + lines.length }
 }
 
-function unlockAfterTalk(state: GameState): GameState {
-  if (state.played.length >= 4) return state
-  if (state.deck.length === 0) return state
-  return { ...state, canDraw: true }
-}
-
-function playCardId(state: GameState, cardId: string): GameState {
-  const card = story.cards.find((c) => c.id === cardId)
-  if (!card) return state
-
-  const played = [...state.played, cardId]
-  const stage = played.length as 1 | 2 | 3 | 4
-  const message: Message = { id: state.nextId, sender: 'user', kind: 'card', cardId }
-
-  const lines = [...card.reflection, ...story.realization[stage]]
-  if (stage === 4) lines.push(...story.ending)
-
-  return enqueue(
-    {
-      ...state,
-      revealing: null,
-      played,
-      canDraw: false,
-      messages: [...state.messages, message],
-      nextId: state.nextId + 1,
-    },
-    lines,
-  )
+function advanceAfterQueue(state: GameState): GameState {
+  switch (state.phase) {
+    case 'intro':
+      return enqueue({ ...state, phase: 'question' }, [story.stages[0]!.question])
+    case 'question':
+      return { ...state, phase: 'talk' }
+    case 'echo':
+      return { ...state, phase: 'shimmer' }
+    case 'respond': {
+      const last = state.played[state.played.length - 1]
+      return { ...state, phase: 'badge', flyingBadge: last ?? null }
+    }
+    case 'ending':
+      return { ...state, phase: 'complete', flyingBadge: null }
+    default:
+      return state
+  }
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'startIntro': {
       if (state.introPlayed) return state
-      return enqueue({ ...state, introPlayed: true, canDraw: false }, story.intro)
+      return enqueue({ ...state, introPlayed: true, phase: 'intro' }, story.intro)
+    }
+
+    case 'sendText': {
+      if (state.phase !== 'talk' || isBusy(state)) return state
+      const text = action.text.trim()
+      if (!text) return state
+
+      const message: Message = { id: state.nextId, sender: 'user', kind: 'text', text }
+      const echo = makeEcho(state.stage, text)
+      const surfacing = story.surfacing[state.stage]!
+
+      return enqueue(
+        {
+          ...state,
+          phase: 'echo',
+          messages: [...state.messages, message],
+          nextId: state.nextId + 1,
+        },
+        [echo, surfacing],
+      )
+    }
+
+    case 'finishShimmer': {
+      if (state.phase !== 'shimmer') return state
+      return { ...state, phase: 'draw' }
     }
 
     case 'drawCard': {
-      if (!state.canDraw || state.deck.length === 0 || isBusy(state) || state.revealing) return state
+      if (state.phase !== 'draw' || state.deck.length === 0 || isBusy(state) || state.revealing) {
+        return state
+      }
       const [cardId, ...deck] = state.deck
-      return { ...state, deck, revealing: cardId!, canDraw: false }
+      return { ...state, deck, revealing: cardId! }
     }
 
     case 'playRevealed': {
       if (!state.revealing || isBusy(state)) return state
-      return playCardId(state, state.revealing)
-    }
+      const card = story.cards.find((c) => c.id === state.revealing)
+      if (!card) return state
 
-    case 'sendText': {
-      const text = action.text.trim()
-      if (!text) return state
-      const message: Message = { id: state.nextId, sender: 'user', kind: 'text', text }
-      const reply = story.typedReplies[state.typedReplyIndex % story.typedReplies.length]!
+      const played = [...state.played, state.revealing]
+      const stageNum = played.length as 1 | 2 | 3 | 4
+      const message: Message = {
+        id: state.nextId,
+        sender: 'user',
+        kind: 'card',
+        cardId: state.revealing,
+      }
+      const lines = [...card.reflection, ...story.realization[stageNum]]
+
       return enqueue(
         {
           ...state,
+          revealing: null,
+          played,
+          phase: 'respond',
           messages: [...state.messages, message],
-          typedReplyIndex: state.typedReplyIndex + 1,
           nextId: state.nextId + 1,
         },
-        [reply],
+        lines,
+      )
+    }
+
+    case 'finishBadge': {
+      if (state.phase !== 'badge') return state
+      const cleared = { ...state, flyingBadge: null }
+
+      if (state.played.length >= 4) {
+        return enqueue({ ...cleared, phase: 'ending' }, story.ending)
+      }
+
+      const nextStage = state.stage + 1
+      return enqueue(
+        { ...cleared, stage: nextStage, phase: 'question' },
+        [story.stages[nextStage]!.question],
       )
     }
 
@@ -163,7 +218,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         typing: false,
         messages: [...state.messages, { id: line.id, sender: 'companion', kind: 'text', text: line.text }],
       }
-      if (rest.length === 0) return unlockAfterTalk(next)
+      if (rest.length === 0) return advanceAfterQueue(next)
       return next
     }
 

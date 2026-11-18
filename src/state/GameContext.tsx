@@ -4,8 +4,9 @@ import {
   initialGameState,
   isBusy,
   isStoryComplete,
-  isWaitingForPlayer,
+  statusLine,
   type GameState,
+  type Phase,
 } from './gameReducer'
 
 const PAUSE_BEFORE_TYPING_MS = 400
@@ -16,12 +17,14 @@ function typingDuration(text: string) {
 
 type Game = GameState & {
   busy: boolean
-  waitingForPlayer: boolean
   storyComplete: boolean
+  status: string | null
   startIntro: () => void
+  sendText: (text: string) => void
+  finishShimmer: () => void
   drawCard: () => void
   playRevealed: () => void
-  sendText: (text: string) => void
+  finishBadge: () => void
   markBadgesSeen: () => void
   reset: () => void
 }
@@ -40,12 +43,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer)
   }, [head?.id, state.typing])
 
+  // Auto-advance shimmer after the sweep plays.
+  useEffect(() => {
+    if (state.phase !== 'shimmer') return
+    const timer = window.setTimeout(() => dispatch({ type: 'finishShimmer' }), 900)
+    return () => clearTimeout(timer)
+  }, [state.phase])
+
   const actions = useMemo(
     () => ({
       startIntro: () => dispatch({ type: 'startIntro' }),
+      sendText: (text: string) => dispatch({ type: 'sendText', text }),
+      finishShimmer: () => dispatch({ type: 'finishShimmer' }),
       drawCard: () => dispatch({ type: 'drawCard' }),
       playRevealed: () => dispatch({ type: 'playRevealed' }),
-      sendText: (text: string) => dispatch({ type: 'sendText', text }),
+      finishBadge: () => dispatch({ type: 'finishBadge' }),
       markBadgesSeen: () => dispatch({ type: 'markBadgesSeen' }),
       reset: () => dispatch({ type: 'reset' }),
     }),
@@ -56,8 +68,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       busy: isBusy(state),
-      waitingForPlayer: isWaitingForPlayer(state),
       storyComplete: isStoryComplete(state),
+      status: statusLine(state),
       ...actions,
     }),
     [state, actions],
@@ -71,3 +83,5 @@ export function useGame(): Game {
   if (!game) throw new Error('useGame must be used inside <GameProvider />')
   return game
 }
+
+export type { Phase }

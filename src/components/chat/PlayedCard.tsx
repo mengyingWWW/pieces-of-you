@@ -9,6 +9,7 @@ const H = 213
 export function PlayedCard({ card }: { card: Card }) {
   return (
     <motion.div
+      data-played-card={card.id}
       initial={{ opacity: 0, y: 28, scale: 0.86, rotate: -8 }}
       animate={{ opacity: 1, y: 0, scale: 1, rotate: -3 }}
       transition={{ ...spring, stiffness: 320, damping: 18 }}

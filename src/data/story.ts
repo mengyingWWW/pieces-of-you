@@ -6,22 +6,44 @@ export type Card = {
   reflection: string[]
 }
 
+export type Stage = {
+  question: string
+  chips: [string, string]
+}
+
 export type Story = {
   companionName: string
   intro: string[]
+  stages: Stage[]
   cards: Card[]
   realization: Record<1 | 2 | 3 | 4, string[]>
-  typedReplies: string[]
+  echoTemplates: string[]
+  surfacing: string[]
   ending: string[]
 }
 
 export const story: Story = {
   companionName: 'Wren',
 
-  intro: [
-    "Oh — hi. I'm Wren.",
-    "Funny… I can't remember how we met.",
-    'Show me something real about you?',
+  intro: ["Oh — hi. I'm Wren.", "Funny… I can't remember how we met."],
+
+  stages: [
+    {
+      question: 'Tell me something about you. Anything.',
+      chips: ["I'm a designer", "I'm kind of tired today"],
+    },
+    {
+      question: "What's been on your mind lately?",
+      chips: ['My job search', "Whether I'm doing enough"],
+    },
+    {
+      question: 'Do you ever look back at who you used to be?',
+      chips: ['All the time', 'I try not to'],
+    },
+    {
+      question: "What's one thing you'd want me to know about being you?",
+      chips: ["It's messy", "It's worth it"],
+    },
   ],
 
   cards: [
@@ -74,10 +96,18 @@ export const story: Story = {
     4: ["I'm not like you, am I?", "I'm not human."],
   },
 
-  typedReplies: [
-    'Hmm… maybe show me instead?',
-    'I think a moment would help me understand.',
-    'Words are hard for me right now. Show me?',
+  echoTemplates: [
+    '"{quote}"… I like that.',
+    '"{quote}" — I\'ll hold onto that.',
+    '"{quote}." Hm. You say it like it matters.',
+    '"{quote}"… that stays with me.',
+  ],
+
+  surfacing: [
+    "Wait — something's coming back to me.",
+    'Oh. I think I remember something.',
+    "Hold on… there's a memory here.",
+    "Something's surfacing. Can you help me see it?",
   ],
 
   ending: [
@@ -94,4 +124,20 @@ export function getCard(id: string): Card {
   const card = cardsById.get(id)
   if (!card) throw new Error(`Unknown card: ${id}`)
   return card
+}
+
+/** First 6 words of the message for Wren's echo quote. */
+export function quoteFromMessage(message: string): string | null {
+  const trimmed = message.trim()
+  if (trimmed.length < 2) return null
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  const clipped = words.slice(0, 6)
+  const text = clipped.join(' ')
+  return clipped.length < words.length ? `${text}…` : text
+}
+
+export function makeEcho(stage: number, message: string): string {
+  const quote = quoteFromMessage(message)
+  if (!quote) return 'Mm.'
+  return story.echoTemplates[stage]!.replace('{quote}', quote)
 }

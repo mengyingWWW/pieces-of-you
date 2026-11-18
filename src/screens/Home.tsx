@@ -19,7 +19,7 @@ export function Home() {
         <div className="max-w-[280px] text-center">
           <p className="text-callout text-label-secondary">Wren is waiting to get to know you.</p>
           <p className="mt-2 text-caption text-label-secondary">
-            Draw moments from your life. Show them to Wren.
+            Talk to Wren. Draw moments from your life.
           </p>
         </div>
       </main>
