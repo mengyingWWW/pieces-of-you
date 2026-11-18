@@ -5,7 +5,7 @@ import { ChatInput } from '../components/chat/ChatInput'
 import { ChatShimmer } from '../components/chat/ChatShimmer'
 import { DeckPanel } from '../components/chat/DeckPanel'
 import { DrawReveal } from '../components/chat/DrawReveal'
-import { MemoryPathPill } from '../components/chat/MemoryPathPill'
+import { MemoryPathButton } from '../components/chat/MemoryPathButton'
 import { MessageList } from '../components/chat/MessageList'
 import { SuggestionChips } from '../components/chat/SuggestionChips'
 import { Presence } from '../components/Presence'
@@ -39,7 +39,7 @@ export function Chat() {
 
   const [badgeLanded, setBadgeLanded] = useState(false)
   const [showToast, setShowToast] = useState(false)
-  const [pillPopping, setPillPopping] = useState(false)
+  const [iconPopping, setIconPopping] = useState(false)
 
   useEffect(startIntro, [startIntro])
 
@@ -47,15 +47,15 @@ export function Chat() {
     if (phase === 'badge' && flyingBadge) {
       setBadgeLanded(false)
       setShowToast(false)
-      setPillPopping(false)
+      setIconPopping(false)
     }
   }, [phase, flyingBadge])
 
   const handleFlightComplete = useCallback(() => {
     setBadgeLanded(true)
-    setPillPopping(true)
+    setIconPopping(true)
     setShowToast(true)
-    window.setTimeout(() => setPillPopping(false), 700)
+    window.setTimeout(() => setIconPopping(false), 700)
     window.setTimeout(() => {
       setShowToast(false)
       finishBadge()
@@ -64,7 +64,7 @@ export function Chat() {
 
   const showDeck = phase === 'draw' || phase === 'shimmer' || !!revealing
   const showComposer = phase === 'talk'
-  // Hold the count back until the badge finishes flying into the pill.
+  // Hold the count back until the badge finishes flying into the icon.
   const awaitingLand =
     played.length > 0 &&
     !badgeLanded &&
@@ -85,9 +85,9 @@ export function Chat() {
         onBack={pop}
         tall
         trailing={
-          <MemoryPathPill
+          <MemoryPathButton
             count={displayCount}
-            popping={pillPopping}
+            popping={iconPopping}
             unread={unread}
             onClick={openPath}
           />

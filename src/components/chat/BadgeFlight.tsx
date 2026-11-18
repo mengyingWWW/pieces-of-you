@@ -30,9 +30,9 @@ export function BadgeFlight({ cardId, onComplete }: BadgeFlightProps) {
 
   useEffect(() => {
     const cardEl = document.querySelector(`[data-played-card="${cardId}"]`)
-    const pillEl = document.querySelector('[data-memory-path-pill]')
+    const entryEl = document.querySelector('[data-memory-path-entry]')
     const frameEl = document.querySelector('[data-device-frame]') ?? document.querySelector('#root')
-    if (!cardEl || !pillEl || !frameEl) {
+    if (!cardEl || !entryEl || !frameEl) {
       onComplete()
       return
     }
@@ -40,15 +40,15 @@ export function BadgeFlight({ cardId, onComplete }: BadgeFlightProps) {
     const frameRect = frameEl.getBoundingClientRect()
     const scale = frameRect.width / FRAME_W || 1
     const cardLocal = toFrameLocal(cardEl.getBoundingClientRect(), frameRect, scale)
-    const pillLocal = toFrameLocal(pillEl.getBoundingClientRect(), frameRect, scale)
+    const entryLocal = toFrameLocal(entryEl.getBoundingClientRect(), frameRect, scale)
 
     setFrom({
       x: cardLocal.left + cardLocal.width / 2 - BADGE / 2,
       y: cardLocal.top + cardLocal.height * 0.35 - BADGE / 2,
     })
     setTo({
-      x: pillLocal.left + pillLocal.width / 2 - BADGE / 2,
-      y: pillLocal.top + pillLocal.height / 2 - BADGE / 2,
+      x: entryLocal.left + entryLocal.width / 2 - BADGE / 2,
+      y: entryLocal.top + entryLocal.height / 2 - BADGE / 2,
     })
   }, [cardId, onComplete])
 
