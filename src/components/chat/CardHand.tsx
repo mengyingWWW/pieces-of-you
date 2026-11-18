@@ -1,128 +1,138 @@
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { getCard } from '../../data/story'
 import { useNavigation } from '../../navigation/navigation'
 import { useGame } from '../../state/GameContext'
-import { spring } from '../../theme/motion'
 import { CardBack } from './CardBack'
-import { MomentCard } from './MomentCard'
 
-const HAND_W = 84
-const HAND_H = 112
-const DECK_W = 72
-const DECK_H = 96
+const DECK_W = 78
+const DECK_H = 104
 
 export function CardHand() {
   const { push } = useNavigation()
-  const { hand, deck, canDraw, busy, storyComplete, revealing, drawCard, playCard } = useGame()
+  const { deck, canDraw, busy, storyComplete, revealing, drawCard } = useGame()
   const reduceMotion = useReducedMotion()
   const unlocked = canDraw && !busy && !revealing
-  const stackCount = Math.min(3, deck.length)
+  const locked = !unlocked && deck.length > 0 && !storyComplete
+  const stackCount = deck.length
+  const [lockedHint, setLockedHint] = useState(false)
 
-  if (storyComplete) {
-    return (
-      <div className="flex h-[132px] flex-col items-center justify-center gap-2.5">
-        <p className="text-callout text-label-tertiary">All four pieces shared.</p>
-        <motion.button
-          type="button"
-          onClick={() => push('profile')}
-          whileTap={{ opacity: 0.5 }}
-          className="rounded-full px-3 py-1 text-caption font-medium text-mint-deep"
-        >
-          See Wren&apos;s pieces
-        </motion.button>
-      </div>
-    )
+  useEffect(() => {
+    if (!lockedHint) return
+    const timer = window.setTimeout(() => setLockedHint(false), 1500)
+    return () => clearTimeout(timer)
+  }, [lockedHint])
+
+  function handleDeckTap() {
+    if (unlocked) {
+      drawCard()
+      return
+    }
+    if (locked) setLockedHint(true)
   }
 
   return (
-    <div className="flex h-[132px] items-end gap-3">
-      {stackCount > 0 && (
-        <div className="relative flex w-[88px] shrink-0 flex-col items-center">
-          <motion.button
-            type="button"
-            disabled={!unlocked}
-            onClick={drawCard}
-            aria-label={unlocked ? 'Draw a moment' : 'Deck locked'}
-            className="relative h-[104px] w-[80px] disabled:cursor-default"
+    <div className="relative flex h-[132px] items-center justify-center">
+      <AnimatePresence mode="wait">
+        {storyComplete ? (
+          <motion.div
+            key="done"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center gap-2.5"
           >
-            {Array.from({ length: stackCount }, (_, i) => {
-              const depth = stackCount - 1 - i
-              const isTop = i === stackCount - 1
-              return (
-                <motion.div
-                  key={i}
-                  className="absolute bottom-1 left-1"
-                  style={{ x: depth * 3, y: -depth * 3, zIndex: i }}
-                  animate={
-                    unlocked && !reduceMotion && isTop
-                      ? { scale: [1, 1.03, 1] }
-                      : { scale: 1 }
-                  }
-                  transition={
-                    unlocked && isTop
-                      ? { duration: 2.2, repeat: Infinity, ease: 'easeInOut' }
-                      : undefined
-                  }
-                >
-                  <div style={{ filter: unlocked ? undefined : 'saturate(0.5) brightness(0.97)' }}>
-                    <CardBack width={DECK_W} height={DECK_H} glowing={unlocked && isTop} />
-                  </div>
-                </motion.div>
-              )
-            })}
-          </motion.button>
+            <p className="text-callout text-label-tertiary">All four pieces shared.</p>
+            <motion.button
+              type="button"
+              onClick={() => push('profile')}
+              whileTap={{ opacity: 0.5 }}
+              className="rounded-full px-3 py-1 text-caption font-medium text-mint-deep"
+            >
+              See Wren&apos;s pieces
+            </motion.button>
+          </motion.div>
+        ) : stackCount > 0 ? (
+          <motion.div
+            key="deck"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            className="flex flex-col items-center"
+          >
+            <motion.button
+              type="button"
+              onClick={handleDeckTap}
+              aria-label={unlocked ? 'Draw a moment' : 'Deck locked'}
+              animate={lockedHint ? { x: [0, -7, 7, -5, 5, -2, 0] } : { x: 0 }}
+              transition={lockedHint ? { duration: 0.42 } : undefined}
+              className="relative h-[112px] w-[90px]"
+              style={{ pointerEvents: revealing ? 'none' : 'auto' }}
+            >
+              {Array.from({ length: stackCount }, (_, i) => {
+                const depth = stackCount - 1 - i
+                const isTop = i === stackCount - 1
+                return (
+                  <motion.div
+                    key={`${stackCount}-${i}`}
+                    className="absolute bottom-1 left-1/2"
+                    style={{
+                      marginLeft: -DECK_W / 2 + depth * 2.5,
+                      y: -depth * 2.5,
+                      zIndex: i,
+                    }}
+                    animate={
+                      unlocked && !reduceMotion && isTop
+                        ? { scale: [1, 1.03, 1] }
+                        : { scale: 1 }
+                    }
+                    transition={
+                      unlocked && isTop
+                        ? { duration: 2.2, repeat: Infinity, ease: 'easeInOut' }
+                        : undefined
+                    }
+                  >
+                    <div
+                      style={{
+                        filter: unlocked ? undefined : 'saturate(0.5) brightness(0.97)',
+                      }}
+                    >
+                      <CardBack width={DECK_W} height={DECK_H} glowing={unlocked && isTop} />
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </motion.button>
 
-          <div className="mt-1 h-3">
-            <AnimatePresence>
-              {unlocked && (
-                <motion.span
-                  initial={{ opacity: 0, y: 3 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="block text-center text-[11px] leading-none text-mint-deep"
-                >
-                  Draw a moment
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      )}
-
-      <div className="no-scrollbar flex min-w-0 flex-1 items-end justify-start gap-3 overflow-x-auto pb-1">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {hand.map((id) => {
-            const card = getCard(id)
-            return (
-              <motion.button
-                key={id}
-                type="button"
-                layout
-                disabled={busy || !!revealing}
-                onClick={() => playCard(id)}
-                initial={{ opacity: 0, scale: 0.85, y: 16 }}
-                animate={{ opacity: busy ? 0.55 : 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                whileTap={busy || revealing ? undefined : { y: -6 }}
-                transition={spring}
-                aria-label={`Show ${card.title}`}
-                className="shrink-0 disabled:cursor-default"
-              >
-                <motion.div
-                  whileHover={busy || revealing ? undefined : { y: -6 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 24 }}
-                  style={{
-                    borderRadius: 18,
-                    boxShadow: '0 2px 8px rgb(0 0 0 / 0.06), 0 14px 32px rgb(0 0 0 / 0.12)',
-                  }}
-                >
-                  <MomentCard card={card} width={HAND_W} height={HAND_H} />
-                </motion.div>
-              </motion.button>
-            )
-          })}
-        </AnimatePresence>
-      </div>
+            <div className="mt-1 h-4">
+              <AnimatePresence mode="wait">
+                {lockedHint ? (
+                  <motion.span
+                    key="locked"
+                    initial={{ opacity: 0, y: 3 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="block text-center text-[11px] leading-none text-label-tertiary"
+                  >
+                    Wren is still talking…
+                  </motion.span>
+                ) : unlocked ? (
+                  <motion.span
+                    key="draw"
+                    initial={{ opacity: 0, y: 3 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="block text-center text-[11px] leading-none text-mint-deep"
+                  >
+                    Draw a moment
+                  </motion.span>
+                ) : null}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div key="empty" className="h-[112px]" aria-hidden />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

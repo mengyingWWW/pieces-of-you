@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion, type PanInfo } from 'framer-motion'
 import { getCard } from '../../data/story'
 import { spring } from '../../theme/motion'
 import { CardBack } from './CardBack'
@@ -7,22 +7,24 @@ import { MomentCard } from './MomentCard'
 
 const REVEAL_W = 260
 const REVEAL_H = 347
+const SWIPE_THRESHOLD = 120
+const FLICK_VELOCITY = -700
 
 type Phase = 'enter' | 'anticipate' | 'flip' | 'settle' | 'ready' | 'exit'
 
 type DrawRevealProps = {
   cardId: string
-  onKeep: () => void
+  onShow: () => void
 }
 
-export function DrawReveal({ cardId, onKeep }: DrawRevealProps) {
+export function DrawReveal({ cardId, onShow }: DrawRevealProps) {
   const card = getCard(cardId)
   const reduceMotion = useReducedMotion()
   const [phase, setPhase] = useState<Phase>(reduceMotion ? 'ready' : 'enter')
-  const keptRef = useRef(false)
+  const shownRef = useRef(false)
 
   useEffect(() => {
-    keptRef.current = false
+    shownRef.current = false
     if (reduceMotion) {
       setPhase('ready')
       return
@@ -40,30 +42,26 @@ export function DrawReveal({ cardId, onKeep }: DrawRevealProps) {
 
   const flipped = phase === 'flip' || phase === 'settle' || phase === 'ready' || phase === 'exit'
   const settled = phase === 'settle' || phase === 'ready' || phase === 'exit'
-  const canKeep = phase === 'ready'
+  const canShow = phase === 'ready'
 
-  function handleKeep() {
-    if (!canKeep || keptRef.current) return
-    keptRef.current = true
+  function commitShow() {
+    if (!canShow || shownRef.current) return
+    shownRef.current = true
     setPhase('exit')
-    window.setTimeout(onKeep, reduceMotion ? 0 : 420)
+    // Play immediately so the next draw can't race a delayed handoff.
+    onShow()
+  }
+
+  function handleDragEnd(_: unknown, info: PanInfo) {
+    if (!canShow || shownRef.current) return
+    const farEnough = info.offset.y < -SWIPE_THRESHOLD
+    const flicked = info.velocity.y < FLICK_VELOCITY
+    if (farEnough || flicked) commitShow()
   }
 
   return (
     <motion.div
-      role={canKeep ? 'button' : undefined}
-      tabIndex={canKeep ? 0 : undefined}
-      aria-label={canKeep ? 'Keep this moment' : undefined}
-      onClick={handleKeep}
-      onKeyDown={(e) => {
-        if (canKeep && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault()
-          handleKeep()
-        }
-      }}
-      className={`absolute inset-0 z-40 flex flex-col items-center justify-center outline-none ${
-        canKeep ? 'cursor-pointer' : 'cursor-default'
-      }`}
+      className="absolute inset-0 z-40 flex flex-col items-center justify-center outline-none"
       initial={{ opacity: 0 }}
       animate={{ opacity: phase === 'exit' ? 0 : 1 }}
       exit={{ opacity: 0 }}
@@ -82,10 +80,15 @@ export function DrawReveal({ cardId, onKeep }: DrawRevealProps) {
 
       <div className="relative z-10" style={{ perspective: 1400 }}>
         <motion.div
+          drag={canShow ? 'y' : false}
+          dragConstraints={{ top: -220, bottom: 40 }}
+          dragElastic={0.18}
+          dragMomentum={false}
+          onDragEnd={handleDragEnd}
           initial={{ y: 180, scale: 0.42, rotateY: 0, rotateZ: 0 }}
           animate={
             phase === 'exit'
-              ? { y: 220, scale: 0.28, opacity: 0.4, rotateY: 180 }
+              ? { y: -280, scale: 0.42, opacity: 0, rotateY: 180, rotateZ: -8 }
               : {
                   y: 0,
                   scale: settled ? 1.02 : 1,
@@ -94,6 +97,7 @@ export function DrawReveal({ cardId, onKeep }: DrawRevealProps) {
                   opacity: 1,
                 }
           }
+          whileDrag={canShow ? { scale: 1.03, rotateZ: -5 } : undefined}
           transition={
             phase === 'enter'
               ? { ...spring, stiffness: 260, damping: 22 }
@@ -104,10 +108,16 @@ export function DrawReveal({ cardId, onKeep }: DrawRevealProps) {
                   : phase === 'settle'
                     ? { type: 'spring', stiffness: 380, damping: 16 }
                     : phase === 'exit'
-                      ? { duration: 0.4, ease: [0.4, 0, 0.7, 1] }
+                      ? { duration: 0.38, ease: [0.4, 0, 0.7, 1] }
                       : spring
           }
-          style={{ transformStyle: 'preserve-3d', width: REVEAL_W, height: REVEAL_H }}
+          style={{
+            transformStyle: 'preserve-3d',
+            width: REVEAL_W,
+            height: REVEAL_H,
+            touchAction: canShow ? 'none' : undefined,
+            cursor: canShow ? 'grab' : 'default',
+          }}
           className="relative"
         >
           <div
@@ -154,7 +164,8 @@ export function DrawReveal({ cardId, onKeep }: DrawRevealProps) {
               <MomentCard card={card} width={REVEAL_W} height={REVEAL_H} showTitle={false} />
             </motion.div>
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-2.5 pb-2.5 pt-10"
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-2.5 pb-2.5 pt-10"
               style={{
                 background: settled
                   ? 'linear-gradient(to top, rgb(255 255 255 / 0.5) 40%, transparent)'
@@ -192,15 +203,45 @@ export function DrawReveal({ cardId, onKeep }: DrawRevealProps) {
         </motion.div>
       </div>
 
-      <motion.p
-        aria-hidden
-        className="relative z-10 mt-6 text-caption text-label-secondary"
+      <motion.div
+        className="relative z-10 mt-5 flex flex-col items-center gap-2"
         initial={{ opacity: 0 }}
-        animate={{ opacity: canKeep ? 1 : 0 }}
+        animate={{ opacity: canShow ? 1 : 0 }}
         transition={{ duration: 0.3 }}
       >
-        Tap to keep
-      </motion.p>
+        <div className="flex flex-col items-center gap-1" aria-hidden={!canShow}>
+          <motion.span
+            animate={canShow && !reduceMotion ? { y: [0, -5, 0] } : { y: 0 }}
+            transition={{ duration: 1.15, repeat: Infinity, ease: 'easeInOut' }}
+            className="text-label-tertiary"
+          >
+            <ChevronUp />
+          </motion.span>
+          <p className="text-caption text-label-secondary">Swipe up to show Wren</p>
+        </div>
+        <button
+          type="button"
+          disabled={!canShow}
+          onClick={commitShow}
+          className="mt-1 text-caption font-medium text-mint-deep disabled:opacity-0"
+        >
+          Show Wren
+        </button>
+      </motion.div>
     </motion.div>
+  )
+}
+
+function ChevronUp() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        d="M4 11.5L9 6.5l5 5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }

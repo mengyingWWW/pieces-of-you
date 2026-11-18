@@ -20,8 +20,7 @@ type Game = GameState & {
   storyComplete: boolean
   startIntro: () => void
   drawCard: () => void
-  keepCard: () => void
-  playCard: (cardId: string) => void
+  playRevealed: () => void
   sendText: (text: string) => void
   markBadgesSeen: () => void
   reset: () => void
@@ -45,8 +44,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     () => ({
       startIntro: () => dispatch({ type: 'startIntro' }),
       drawCard: () => dispatch({ type: 'drawCard' }),
-      keepCard: () => dispatch({ type: 'keepCard' }),
-      playCard: (cardId: string) => dispatch({ type: 'playCard', cardId }),
+      playRevealed: () => dispatch({ type: 'playRevealed' }),
       sendText: (text: string) => dispatch({ type: 'sendText', text }),
       markBadgesSeen: () => dispatch({ type: 'markBadgesSeen' }),
       reset: () => dispatch({ type: 'reset' }),

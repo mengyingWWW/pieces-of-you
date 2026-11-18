@@ -10,6 +10,8 @@ type MomentCardProps = {
   showTitle?: boolean
   /** Subtitle only in the reveal overlay. */
   showSubtitle?: boolean
+  /** Tighter title strip for played cards in chat. */
+  compactTitle?: boolean
   className?: string
   style?: CSSProperties
 }
@@ -20,12 +22,19 @@ export function MomentCard({
   height,
   showTitle = true,
   showSubtitle = false,
+  compactTitle = false,
   className = '',
   style,
 }: MomentCardProps) {
+  const padX = compactTitle ? 6 : width < 100 ? 6 : 10
+  const padB = compactTitle ? 6 : width < 100 ? 6 : 10
+  const stripPad = compactTitle ? '5px 7px' : width < 100 ? '6px 7px' : '8px 10px'
+  const titleSize = compactTitle ? 11 : width < 100 ? 10 : 13
+  const titleLeading = compactTitle ? '13px' : width < 100 ? '12px' : '16px'
+
   return (
     <div
-      className={`relative overflow-hidden bg-surface ${className}`}
+      className={`relative overflow-hidden bg-transparent ${className}`}
       style={{
         width,
         height,
@@ -53,18 +62,19 @@ export function MomentCard({
 
       {(showTitle || showSubtitle) && (
         <div
-          className="absolute inset-x-0 bottom-0 z-10 pt-6"
+          className="absolute inset-x-0 bottom-0 z-10"
           style={{
-            paddingLeft: width < 100 ? 6 : 10,
-            paddingRight: width < 100 ? 6 : 10,
-            paddingBottom: width < 100 ? 6 : 10,
-            background: 'linear-gradient(to top, rgb(255 255 255 / 0.55) 35%, transparent)',
+            paddingLeft: padX,
+            paddingRight: padX,
+            paddingBottom: padB,
+            paddingTop: compactTitle ? 16 : 24,
+            background: 'linear-gradient(to top, rgb(255 255 255 / 0.5) 30%, transparent)',
           }}
         >
           <div
             className="rounded-[10px]"
             style={{
-              padding: width < 100 ? '6px 7px' : '8px 10px',
+              padding: stripPad,
               background: 'rgb(255 255 255 / 0.7)',
               backdropFilter: 'blur(12px) saturate(160%)',
               WebkitBackdropFilter: 'blur(12px) saturate(160%)',
@@ -73,10 +83,7 @@ export function MomentCard({
             {showTitle && (
               <p
                 className="line-clamp-2 text-left font-medium text-label"
-                style={{
-                  fontSize: width < 100 ? 10 : 13,
-                  lineHeight: width < 100 ? '12px' : '16px',
-                }}
+                style={{ fontSize: titleSize, lineHeight: titleLeading }}
               >
                 {card.title}
               </p>

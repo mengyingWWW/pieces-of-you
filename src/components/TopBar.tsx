@@ -6,16 +6,14 @@ type TopBarProps = {
   onBack?: () => void
   children?: ReactNode
   trailing?: ReactNode
-  /** Taller bar for status line under the title. */
+  /** Reserve space for a status line under the title (fixed height). */
   tall?: boolean
 }
 
 export function TopBar({ backLabel = 'Back', onBack, children, trailing, tall = false }: TopBarProps) {
   return (
     <header className="glass absolute inset-x-0 top-0 z-10 border-x-0 border-t-0 pt-[var(--safe-top)]">
-      <div
-        className={`relative flex items-center justify-center px-2 ${tall ? 'h-[56px]' : 'h-11'}`}
-      >
+      <div className={`relative flex items-center justify-center px-2 ${tall ? 'h-[56px]' : 'h-11'}`}>
         {onBack && (
           <motion.button
             type="button"

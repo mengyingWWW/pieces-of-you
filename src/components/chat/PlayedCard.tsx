@@ -14,7 +14,7 @@ export function PlayedCard({ card }: { card: Card }) {
       transition={{ ...spring, stiffness: 320, damping: 18 }}
       style={{ originX: 1, originY: 1 }}
     >
-      <MomentCard card={card} width={W} height={H} />
+      <MomentCard card={card} width={W} height={H} compactTitle />
     </motion.div>
   )
 }
